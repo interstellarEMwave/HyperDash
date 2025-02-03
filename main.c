@@ -2,124 +2,134 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define screenWidth 236
-#define screenHeight 55
-#define gameScreenHeight screenHeight - 5
-#define mapWidth = screenWidth - 2
-#define mapHeight = gameScreenHeight - 2
+#define SCREEN_WIDTH 236
+#define SCREEN_HEIGHT 55
+
+#define PRINT_WIDTH (SCREEN_WIDTH + 1)
+#define PRINT_HEIGHT SCREEN_HEIGHT
+
+#define MAP_WIDTH SCREEN_WIDTH
+#define MAP_HEIGHT (SCREEN_HEIGHT - 5)
+#define MAP_MAX_ROOMCOUNT ((SCREEN_WIDTH * SCREEN_HEIGHT)/9)
 
 typedef unsigned __int8 u8;
 
-char sprites[] = {' ', '\u2551', '\u2550', '\u2554', '\u2557', '\u255D', '\u255A'};
+typedef enum
+ENUM_cellType
+{
+	EMPTY,
+	WALL,
+	FLOOR
+
+} ENUM_cellType;
+
+char sprites[] = {' ', '#', '.'};
+
+//char sprites[] = {' ', '\u2551', '\u2550', '\u2554', '\u2557', '\u255D', '\u255A', '\0'};
 
 void
 fillWithRandomNumbers(int* arr, int count, int lower, int upper)
 {
 	for(int i = 0; i < count; i++)
 	{
-		arr[i] = (rand() % (upper - lower + 1)) + lower;
+		arr[i] = randInt(lower, upper);
 	}
 }
 
-//Inlcudes upper
 int
-randint(int lower, int upper)
+randInt(int lower, int upper)
 {
-	return ((rand() % (upper - lower + 1)) + lower);
+	//if(lower == upper) return lower;
+	return ((rand() % (upper - lower)) + lower);
 }
 
 
-
-
-int
-room_generateRandom(u8* map, int sizeMax, int attempts)
-{
-	int x = 0;
-	int y = 0;
-	int size[2] = {0};
-	for(int i = 0; i < attempts; i++)
-	{
-		y = randint(0, mapHeight - 1);
-		x = randint(0, mapWidth - 1);
-		fillWithRandomNumbers(size, 2, 3, sizeMax);
-		if(y + size[0] < mapHeight
-		&& x + size[1] < mapWidth)
-		{
-			room_setInMap(map, y, x, size)
-			
 
 
 void
-room_setInMap(u8* map, int y, int x, int[2] size)
+map_makeRoom(u8* map, int topLeftY, int topLeftX, int roomHeight, int roomWidth)
 {
-	for(int i = y*mapWidth+x; i < y*width+x+size[1]; i++)
+	for(int i = topLeftY*MAP_WIDTH + topLeftX; 
+			i < topLeftY*MAP_WIDTH + topLeftX + roomWidth; 
+			++i)
 	{
-		map[i] = 2;
-		map[i + (size[0] - 1)*width] = 2;
+		map[i] = WALL;
+		map[i + (roomHeight-1)*MAP_WIDTH] = WALL;
 	}
-	for(int i = (y+1); i < y + size[0] - 1; i++)
+	for(int i = topLeftY*MAP_WIDTH + topLeftX;
+			i < (topLeftY+roomHeight)*MAP_WIDTH + topLeftX;
+			i += MAP_WIDTH)
 	{
-		map[i*mapWidth+x] = 2;
-		map[i*mapWidth+x+size[1]-1] = 2;
-		for(int j = i*width+x+1; j < i*width+x+size[1]-1; j++)
+		map[i] = WALL;
+		map[i+roomWidth-1] = WALL;
+	}
+
+	for(int i = (topLeftY+1)*MAP_WIDTH; i < (topLeftY+roomHeight-1)*MAP_WIDTH; i += MAP_WIDTH)
+	{
+		for(int j = topLeftX + 1; j < topLeftX + roomWidth - 1; ++j)
 		{
-			map[j] = 1;
+			map[i+j] = EMPTY;
 		}
 	}
 }
 
 
 void
-drawRoom(u8* arr, int w, int y, int x, int roomHeight, int roomWidth)
+map_generateRooms(u8* map, int roomCountLower, int roomCountUpper)
 {
-	int width = w+1;
-	for(int i = y*width+x; i < y*width+x+roomWidth; i++)
+	int roomCount = randInt(roomCountLower, roomCountUpper+1);
+	
+	for(int i = 0; i < roomCount*4; i += 4)
 	{
-		arr[i] = '#';
-		arr[i + (roomHeight-1)*width] = '#';
-	}
-	for(int i = y*width+x; i < (y + roomHeight)*width; i += width)
-	{
-		arr[i] = '#';
-		arr[i+roomWidth-1] = '#';
+		int vertical   =	randInt(3, MAP_HEIGHT);	
+		int horizontal =	randInt(3, MAP_WIDTH);	
+		int h =		randInt(3, vertical+1);
+		int w =		randInt(3, horizontal+1);
+
+		map_makeRoom(map, vertical-h, horizontal-w, h, w);
 	}
 }
 
-void 
-clearGamePrintBuffer(u8* gamePrintBuffer, int gamePrintBufferWidth)
+
+void
+print_bufferClear(u8* print_buffer)
 {
-	for(int i = 1; i < gameScreenHeight - 1; i++)
+	for(int i = 0; i < PRINT_HEIGHT; ++i)
 	{
-		for(int j = 1; j < screenWidth - 1; j++)
+		for(int j = 0; j < PRINT_WIDTH-1; ++j)
 		{
-			gamePrintBuffer[i*gamePrintBufferWidth + j] = ' ';
+			print_buffer[i*PRINT_WIDTH + j] = sprites[EMPTY];
 		}
 	}
 }
 
+
+void
+print_fillGameScreen(u8* map, u8* print_buffer)
+{
+	for(int i = 0; i < MAP_HEIGHT; ++i) 
+	{
+		for(int  j = 0; j < MAP_WIDTH; ++j) print_buffer[i*PRINT_WIDTH + j] = sprites[map[i*MAP_WIDTH + j]];
+	}
+}
 
 int
 main(int argc, int** argv)
 {
-	u8 gamePrintBuffer[(screenWidth+1)*gameScreenHeight] = {0};
-	int gamePrintBufferWidth = screenWidth+1;
-	clearGamePrintBuffer(gamePrintBuffer, gamePrintBufferWidth);	
-	for(int i = 0; i < gamePrintBufferWidth; i++)
-	{
-		gamePrintBuffer[i] = '#';
-		gamePrintBuffer[i + gamePrintBufferWidth*(gameScreenHeight-1)] = '#';
-	}
-	for(int i = 0; i < gameScreenHeight; i++)
-	{
-		gamePrintBuffer[i*gamePrintBufferWidth] = '#';
-		gamePrintBuffer[i*gamePrintBufferWidth + screenWidth - 1] = '#';
-		gamePrintBuffer[i*gamePrintBufferWidth + screenWidth] = '\n';
-	}
+	u8 print_buffer[PRINT_HEIGHT * PRINT_WIDTH + 1] = {0};
+	u8 map[MAP_HEIGHT * MAP_WIDTH] = {0};
 
-	drawRoom(gamePrintBuffer, screenWidth, 1, 1, 5, 7);
-	printf(gamePrintBuffer);
+	print_bufferClear(print_buffer);
+	for(int i = 0; i < PRINT_HEIGHT; ++i) print_buffer[i*PRINT_WIDTH + PRINT_WIDTH-1] = '\n';
+	srand(time(NULL));
+	
 
-	return 0;
+
+	map_makeRoom(map, 0, 0, MAP_HEIGHT, MAP_WIDTH); 
+	map_generateRooms(map, 20, 50);
+
+	print_fillGameScreen(map, print_buffer);	
+	printf("%s", print_buffer);
 }
 
 
