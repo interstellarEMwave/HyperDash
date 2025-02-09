@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SCREEN_WIDTH 236
-#define SCREEN_HEIGHT 55
+#define SCREEN_MAX_WIDTH 236
+#define SCREEN_MAX_HEIGHT 55
 
-#define PRINT_WIDTH (SCREEN_WIDTH + 1)
-#define PRINT_HEIGHT SCREEN_HEIGHT
+#define PRINT_MAX_WIDTH (SCREEN_MAX_WIDTH + 1)
+#define PRINT_MAX_HEIGHT SCREEN_MAX_HEIGHT
 
-#define MAP_WIDTH SCREEN_WIDTH
-#define MAP_HEIGHT (SCREEN_HEIGHT - 5)
-#define MAP_MAX_ROOMCOUNT ((SCREEN_WIDTH * SCREEN_HEIGHT)/9)
+#define MAP_MAX_WIDTH SCREEN_MAX_WIDTH
+#define MAP_MAX_HEIGHT (SCREEN_MAX_HEIGHT - 5)
+#define MAP_MAX_ROOMCOUNT ((SCREEN_MAX_WIDTH * SCREEN_MAX_HEIGHT)/9)
 
 typedef unsigned __int8 u8;
 
@@ -81,28 +81,28 @@ fillCellConditionally(char* pos, int* walls, int* openings, ENUM_cellType true, 
 
 
 void
-map_makeRoom(u8* map, int topLeftY, int topLeftX, int roomHeight, int roomWidth, int openings)
+map_makeRoom(u8* map, int map_width, int topLeftY, int topLeftX, int roomHeight, int roomWidth, int openings)
 {
 	if(roomHeight < 3|| roomWidth < 3) return;
 
 	int nrWalls = 2*roomHeight + 2*(roomWidth-2) - openings;
 
-	for(int i = topLeftY*MAP_WIDTH + topLeftX; 
-			i < topLeftY*MAP_WIDTH + topLeftX + roomWidth; 
+	for(int i = topLeftY*map_width + topLeftX; 
+			i < topLeftY*map_width + topLeftX + roomWidth; 
 			++i)
 	{
 		fillCellConditionally(map + i,							  &nrWalls, &openings, EMPTY, WALL);
-		fillCellConditionally(map + i + (roomHeight-1)*MAP_WIDTH, &nrWalls, &openings, EMPTY, WALL);
+		fillCellConditionally(map + i + (roomHeight-1)*map_width, &nrWalls, &openings, EMPTY, WALL);
 	}
-	for(int i = (topLeftY+1)*MAP_WIDTH + topLeftX;
-			i < (topLeftY+roomHeight-1)*MAP_WIDTH + topLeftX;
-			i += MAP_WIDTH)
+	for(int i = (topLeftY+1)*map_width + topLeftX;
+			i < (topLeftY+roomHeight-1)*map_width + topLeftX;
+			i += map_width)
 	{
 		fillCellConditionally(map + i,				 &nrWalls, &openings, EMPTY, WALL);
 		fillCellConditionally(map + i + roomWidth-1, &nrWalls, &openings, EMPTY, WALL);
 	}
 
-	for(int i = (topLeftY+1)*MAP_WIDTH; i < (topLeftY+roomHeight-1)*MAP_WIDTH; i += MAP_WIDTH)
+	for(int i = (topLeftY+1)*map_width; i < (topLeftY+roomHeight-1)*map_width; i += map_width)
 	{
 		for(int j = topLeftX + 1; j < topLeftX + roomWidth - 1; ++j)
 		{
@@ -113,27 +113,27 @@ map_makeRoom(u8* map, int topLeftY, int topLeftX, int roomHeight, int roomWidth,
 
 
 void
-map_generateRooms(u8* map, int roomCountLower, int roomCountUpper)
+map_generateRooms(u8* map, int map_height, int map_width, int roomCountLower, int roomCountUpper)
 {
 	int roomCount = randInt(roomCountLower, roomCountUpper+1);
 	
 	for(int i = 0; i < roomCount*4; i += 4)
 	{
 		#if 0
-		int y1 = randInt(0, MAP_HEIGHT);
-		int y2 = randInt(0, MAP_HEIGHT);
-		int x1 = randInt(0, MAP_WIDTH);
-		int x2 = randInt(0, MAP_WIDTH);
+		int y1 = randInt(0, map_height);
+		int y2 = randInt(0, map_height);
+		int x1 = randInt(0, map_width);
+		int x2 = randInt(0, map_width);
 
 		printf("%d %d %d %d\n",min(y1, y2), min(x1, x2), max(y1, y2)-min(y1,y2), max(x1, x2)-min(x1, x2)); 
 		map_makeRoom(map, min(y1, y2), min(x1, x2), max(y1, y2)-min(y1,y2), max(x1, x2)-min(x1, x2), 0);
 		#else
-		int vertical = randInt(3, MAP_HEIGHT);
-		int horizontal = randInt(3, MAP_WIDTH);
+		int vertical = randInt(3, map_height);
+		int horizontal = randInt(3, map_width);
 		int h = randInt(3, vertical+1);
 		int w = randInt(3, horizontal+1);
 
-		map_makeRoom(map, vertical-h, horizontal-w, h, w, 0);
+		map_makeRoom(map, map_width, vertical-h, horizontal-w, h, w, 0);
 		#endif	
 	}
 }
@@ -142,40 +142,46 @@ map_generateRooms(u8* map, int roomCountLower, int roomCountUpper)
 void
 print_bufferClear(u8* print_buffer)
 {
-	for(int i = 0; i < PRINT_HEIGHT; ++i)
+	for(int i = 0; i < PRINT_MAX_HEIGHT; ++i)
 	{
-		for(int j = 0; j < PRINT_WIDTH-1; ++j)
+		for(int j = 0; j < PRINT_MAX_WIDTH; ++j)
 		{
-			print_buffer[i*PRINT_WIDTH + j] = sprites[EMPTY];
+			print_buffer[i*PRINT_MAX_WIDTH + j] = sprites[EMPTY];
 		}
 	}
 }
 
 
 void
-print_fillGameScreen(u8* map, u8* print_buffer)
+print_fillGameScreen(u8* map, u8* print_buffer, int map_height, int map_width)
 {
-	for(int i = 0; i < MAP_HEIGHT; ++i) 
+	for(int i = 0; i < map_height; ++i) 
 	{
-		for(int  j = 0; j < MAP_WIDTH; ++j) print_buffer[i*PRINT_WIDTH + j] = sprites[map[i*MAP_WIDTH + j]];
+		for(int  j = 0; j < map_width; ++j) print_buffer[i*PRINT_MAX_WIDTH + j] = sprites[map[i*map_width + j]];
 	}
 }
 
 int
 main(int argc, int** argv)
 {
-	u8 print_buffer[PRINT_HEIGHT * PRINT_WIDTH + 1] = {0};
-	u8 map[MAP_HEIGHT * MAP_WIDTH] = {0};
+	int map_height = MAP_MAX_HEIGHT/2;
+	int map_width = MAP_MAX_WIDTH/2;
+	int print_height = map_height;
+	int print_width = map_width + 1;
+	
+	
+	u8 print_buffer[PRINT_MAX_HEIGHT * PRINT_MAX_WIDTH + 1] = {0};
+	u8 map[MAP_MAX_HEIGHT * MAP_MAX_WIDTH] = {0};
 
 	print_bufferClear(print_buffer);
-	for(int i = 0; i < PRINT_HEIGHT; ++i) print_buffer[i*PRINT_WIDTH + PRINT_WIDTH-1] = '\n';
+	for(int i = 0; i < PRINT_MAX_HEIGHT; ++i) print_buffer[i*PRINT_MAX_WIDTH + PRINT_MAX_WIDTH-1] = '\n';
 	srand(time(NULL));
 	
 
 	//map_makeRoom(map, 0, 0, MAP_HEIGHT, MAP_WIDTH, 1); 
-	map_generateRooms(map, 15, 25);
+	map_generateRooms(map, map_height, map_width, 7, 15);
 
-	print_fillGameScreen(map, print_buffer);	
+	print_fillGameScreen(map, print_buffer, map_height, map_width);	
 	printf("%s", print_buffer);
 }
 
