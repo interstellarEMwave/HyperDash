@@ -27,7 +27,7 @@ char sprites[] = {' ', '#', '.'};
 
 //char sprites[] = {' ', '\u2551', '\u2550', '\u2554', '\u2557', '\u255D', '\u255A', '\0'};
 
-void
+void 
 fillWithRandomNumbers(int* arr, int count, int lower, int upper)
 {
 	for(int i = 0; i < count; i++)
@@ -45,23 +45,61 @@ randInt(int lower, int upper)
 
 
 
+char
+randPull(int* pool, int numberOfUniques)
+{
+	int sum = 0;
+	for(int i = 0; i < numberOfUniques; ++i) sum += pool[i];
+	
+	int a = randInt(0, sum);
+	
+	for(int i = 0; i < numberOfUniques; ++i)
+	{
+		if(a < pool[i]) return i;
+		else a -= pool[i];
+	}
+	
+	//Should never happen
+	return -1;
+}
+
 
 void
-map_makeRoom(u8* map, int topLeftY, int topLeftX, int roomHeight, int roomWidth)
+fillCellConditionally(char* pos, int* walls, int* openings, ENUM_cellType true, ENUM_cellType false)
 {
+	if(randPull((int[2]){*walls, *openings}, 2))
+	{
+		*pos = true;
+		(*openings)--;
+	}
+	else
+	{
+		*pos = false;
+		(*walls)--;
+	}
+}
+
+
+void
+map_makeRoom(u8* map, int topLeftY, int topLeftX, int roomHeight, int roomWidth, int openings)
+{
+	if(roomHeight < 3|| roomWidth < 3) return;
+
+	int nrWalls = 2*roomHeight + 2*(roomWidth-2) - openings;
+
 	for(int i = topLeftY*MAP_WIDTH + topLeftX; 
 			i < topLeftY*MAP_WIDTH + topLeftX + roomWidth; 
 			++i)
 	{
-		map[i] = WALL;
-		map[i + (roomHeight-1)*MAP_WIDTH] = WALL;
+		fillCellConditionally(map + i,							  &nrWalls, &openings, EMPTY, WALL);
+		fillCellConditionally(map + i + (roomHeight-1)*MAP_WIDTH, &nrWalls, &openings, EMPTY, WALL);
 	}
-	for(int i = topLeftY*MAP_WIDTH + topLeftX;
-			i < (topLeftY+roomHeight)*MAP_WIDTH + topLeftX;
+	for(int i = (topLeftY+1)*MAP_WIDTH + topLeftX;
+			i < (topLeftY+roomHeight-1)*MAP_WIDTH + topLeftX;
 			i += MAP_WIDTH)
 	{
-		map[i] = WALL;
-		map[i+roomWidth-1] = WALL;
+		fillCellConditionally(map + i,				 &nrWalls, &openings, EMPTY, WALL);
+		fillCellConditionally(map + i + roomWidth-1, &nrWalls, &openings, EMPTY, WALL);
 	}
 
 	for(int i = (topLeftY+1)*MAP_WIDTH; i < (topLeftY+roomHeight-1)*MAP_WIDTH; i += MAP_WIDTH)
@@ -81,12 +119,22 @@ map_generateRooms(u8* map, int roomCountLower, int roomCountUpper)
 	
 	for(int i = 0; i < roomCount*4; i += 4)
 	{
-		int vertical   =	randInt(3, MAP_HEIGHT);	
-		int horizontal =	randInt(3, MAP_WIDTH);	
-		int h =		randInt(3, vertical+1);
-		int w =		randInt(3, horizontal+1);
+		#if 0
+		int y1 = randInt(0, MAP_HEIGHT);
+		int y2 = randInt(0, MAP_HEIGHT);
+		int x1 = randInt(0, MAP_WIDTH);
+		int x2 = randInt(0, MAP_WIDTH);
 
-		map_makeRoom(map, vertical-h, horizontal-w, h, w);
+		printf("%d %d %d %d\n",min(y1, y2), min(x1, x2), max(y1, y2)-min(y1,y2), max(x1, x2)-min(x1, x2)); 
+		map_makeRoom(map, min(y1, y2), min(x1, x2), max(y1, y2)-min(y1,y2), max(x1, x2)-min(x1, x2), 0);
+		#else
+		int vertical = randInt(3, MAP_HEIGHT);
+		int horizontal = randInt(3, MAP_WIDTH);
+		int h = randInt(3, vertical+1);
+		int w = randInt(3, horizontal+1);
+
+		map_makeRoom(map, vertical-h, horizontal-w, h, w, 0);
+		#endif	
 	}
 }
 
@@ -124,12 +172,19 @@ main(int argc, int** argv)
 	srand(time(NULL));
 	
 
-
-	map_makeRoom(map, 0, 0, MAP_HEIGHT, MAP_WIDTH); 
-	map_generateRooms(map, 20, 50);
+	//map_makeRoom(map, 0, 0, MAP_HEIGHT, MAP_WIDTH, 1); 
+	map_generateRooms(map, 15, 25);
 
 	print_fillGameScreen(map, print_buffer);	
 	printf("%s", print_buffer);
 }
 
+/*
+ |
+-+- 
+ |  
+	  
 
++
+
+*/
